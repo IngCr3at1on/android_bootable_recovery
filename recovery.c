@@ -723,7 +723,6 @@ prompt_and_wait() {
 
 		    static char* list[] = { "reboot system now",
 				            "reboot recovery",
-				            "reboot into fastboot mode",
 				            NULL
 		    };
 
@@ -738,11 +737,6 @@ prompt_and_wait() {
 			case 1:
 			    {
 				__system("/sbin/reboot_recovery");
-				break;
-			    }
-			case 2:
-			    {
-				__system("/sbin/reboot_fastboot");
 				break;
 			    }
 		    }
