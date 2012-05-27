@@ -26,7 +26,6 @@
 #include "cutils/properties.h"
 #include "firmware.h"
 #include "install.h"
-#include "make_ext4fs.h"
 #include "minui/minui.h"
 #include "minzip/DirUtil.h"
 #include "roots.h"
@@ -438,9 +437,6 @@ int format_device(const char *device, const char *path, const char *fs_type) {
         LOGE("unknown volume \"%s\"\n", path);
         return -1;
     }
-    if (strstr(path, "/data") == path && volume_for_path("/sdcard") == NULL && is_data_media()) {
-        return format_unknown_device(NULL, path, NULL);
-    }
     if (strcmp(fs_type, "ramdisk") == 0) {
         // you can't format the ramdisk.
         LOGE("can't format_volume \"%s\"", path);
@@ -492,13 +488,8 @@ int format_device(const char *device, const char *path, const char *fs_type) {
     }
 
     if (strcmp(fs_type, "ext4") == 0) {
-        int length = 0;
-        if (strcmp(v->fs_type, "ext4") == 0) {
-            // Our desired filesystem matches the one in fstab, respect v->length
-            length = v->length;
-        }
         reset_ext4fs_info();
-        int result = make_ext4fs(device, length);
+        int result = make_ext4fs(device, NULL, NULL, 0, 0, 0);
         if (result != 0) {
             LOGE("format_volume: make_extf4fs failed on %s\n", device);
             return -1;
@@ -595,7 +586,6 @@ int is_safe_to_format(char* name)
      * to be safe we'll pull it, if someone wants to format their splash and
      * confirm it's safe I'll add it back in. */
     property_get("ro.cwm.forbid_format", str, "/misc,/radio,/bootloader,/recovery,/efs,/sdcard,/splash");
-
     partition = strtok(str, ", ");
     while (partition != NULL) {
         if (strcmp(name, partition) == 0) {
@@ -687,39 +677,37 @@ void show_partition_menu()
 
     for (;;)
     {
-    		for (i = 0; i < mountable_volumes; i++)
-    		{
-    			MountMenuEntry* e = &mount_menue[i];
-    			Volume* v = e->v;
-    			if(is_path_mounted(v->mount_point))
-    				options[i] = e->unmount;
-    			else
-    				options[i] = e->mount;
-    		}
 
-    		for (i = 0; i < formatable_volumes; i++)
-    		{
-    			FormatMenuEntry* e = &format_menue[i];
+		for (i = 0; i < mountable_volumes; i++)
+		{
+			MountMenuEntry* e = &mount_menue[i];
+			Volume* v = e->v;
+			if(is_path_mounted(v->mount_point))
+				options[i] = e->unmount;
+			else
+				options[i] = e->mount;
+		}
 
-    			options[mountable_volumes+i] = e->txt;
-    		}
+		for (i = 0; i < formatable_volumes; i++)
+		{
+			FormatMenuEntry* e = &format_menue[i];
 
-        if (!is_data_media()) {
-          options[mountable_volumes + formatable_volumes] = "mount USB storage";
-          options[mountable_volumes + formatable_volumes + 1] = NULL;
-        }
-        else {
-          options[mountable_volumes + formatable_volumes] = NULL;
-        }
+			options[mountable_volumes+i] = e->txt;
+		}
+
+        options[mountable_volumes+formatable_volumes] = "mount USB storage";
+        options[mountable_volumes+formatable_volumes + 1] = NULL;
 
         int chosen_item = get_menu_selection(headers, &options, 0, 0);
         if (chosen_item == GO_BACK)
             break;
-        if (chosen_item == (mountable_volumes+formatable_volumes)) {
+        if (chosen_item == (mountable_volumes+formatable_volumes))
+        {
             show_mount_usb_storage_menu();
         }
-        else if (chosen_item < mountable_volumes) {
-			      MountMenuEntry* e = &mount_menue[chosen_item];
+        else if (chosen_item < mountable_volumes)
+        {
+			MountMenuEntry* e = &mount_menue[chosen_item];
             Volume* v = e->v;
 
             if (is_path_mounted(v->mount_point))
@@ -753,6 +741,7 @@ void show_partition_menu()
 
     free(mount_menue);
     free(format_menue);
+
 }
 
 void show_nandroid_advanced_restore_menu(const char* path)
@@ -844,7 +833,7 @@ void show_nandroid_menu()
                             NULL
     };
 
-    if (volume_for_path("/emmc") == NULL || volume_for_path("/sdcard") == NULL && is_data_media())
+    if (volume_for_path("/emmc") == NULL)
         list[3] = NULL;
 
     int chosen_item = get_menu_selection(headers, list, 0, 0);
@@ -852,7 +841,9 @@ void show_nandroid_menu()
     {
         case 0:
             {
-                char backup_path[PATH_MAX];
+		if (confirm_selection("Confirm BACKUP?", "Yes - Start Backup NOW!"))
+		{                
+		char backup_path[PATH_MAX];
                 time_t t = time(NULL);
                 struct tm *tmp = localtime(&t);
                 if (tmp == NULL)
@@ -866,6 +857,7 @@ void show_nandroid_menu()
                     strftime(backup_path, sizeof(backup_path), "/sdcard/clockworkmod/backup/%F.%H.%M.%S", tmp);
                 }
                 nandroid_backup(backup_path);
+		}
             }
             break;
         case 1:
@@ -1093,8 +1085,10 @@ void show_advanced_menu()
                 break;
             }
             case 2:
-				handle_failure(1);
-				break;
+            {
+			  handle_failure(1);
+			  break;
+		  }
             case 3:
             {
                 ui_printlogtail(12);

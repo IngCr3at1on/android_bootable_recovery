@@ -62,7 +62,6 @@ static const char *COMMAND_FILE = "/cache/recovery/command";
 static const char *INTENT_FILE = "/cache/recovery/intent";
 static const char *LOG_FILE = "/cache/recovery/log";
 static const char *LAST_LOG_FILE = "/cache/recovery/last_log";
-static const char *CACHE_ROOT = "/cache";
 static const char *SDCARD_ROOT = "/sdcard";
 static int allow_display_toggle = 1;
 static int poweroff = 0;
@@ -152,7 +151,7 @@ static const int MAX_ARG_LENGTH = 4096;
 static const int MAX_ARGS = 100;
 
 // open a given path, mounting partitions as necessary
-FILE*
+static FILE*
 fopen_path(const char *path, const char *mode) {
     if (ensure_path_mounted(path) != 0) {
         LOGE("Can't mount %s\n", path);
@@ -184,7 +183,7 @@ static void
 get_args(int *argc, char ***argv) {
     struct bootloader_message boot;
     memset(&boot, 0, sizeof(boot));
-    if (device_flash_type() == MTD || device_flash_type() == MMC) {
+    if (device_flash_type() == MTD) {
         get_bootloader_message(&boot);  // this may fail, leaving a zeroed structure
     }
 
@@ -243,7 +242,9 @@ get_args(int *argc, char ***argv) {
         strlcat(boot.recovery, (*argv)[i], sizeof(boot.recovery));
         strlcat(boot.recovery, "\n", sizeof(boot.recovery));
     }
-    set_bootloader_message(&boot);
+    if (device_flash_type() == MTD) {
+        set_bootloader_message(&boot);
+    }
 }
 
 void
@@ -305,10 +306,12 @@ finish_recovery(const char *send_intent) {
     copy_log_file(LAST_LOG_FILE, false);
     chmod(LAST_LOG_FILE, 0640);
 
-    // Reset to normal system boot so recovery won't cycle indefinitely.
-    struct bootloader_message boot;
-    memset(&boot, 0, sizeof(boot));
-    set_bootloader_message(&boot);
+    if (device_flash_type() == MTD) {
+        // Reset to mormal system boot so recovery won't cycle indefinitely.
+        struct bootloader_message boot;
+        memset(&boot, 0, sizeof(boot));
+        set_bootloader_message(&boot);
+    }
 
     // Remove the command file, so recovery won't repeat indefinitely.
     if (ensure_path_mounted(COMMAND_FILE) != 0 ||
@@ -531,8 +534,8 @@ static int compare_string(const void* a, const void* b) {
 }
 
 static int
-update_directory(const char* path, const char* unmount_when_done) {
-    ensure_path_mounted(path);
+sdcard_directory(const char* path) {
+    ensure_path_mounted(SDCARD_ROOT);
 
     const char* MENU_HEADERS[] = { "Choose a package to install:",
                                    path,
@@ -543,9 +546,7 @@ update_directory(const char* path, const char* unmount_when_done) {
     d = opendir(path);
     if (d == NULL) {
         LOGE("error opening %s: %s\n", path, strerror(errno));
-        if (unmount_when_done != NULL) {
-            ensure_path_unmounted(unmount_when_done);
-        }
+        ensure_path_unmounted(SDCARD_ROOT);
         return 0;
     }
 
@@ -610,7 +611,7 @@ update_directory(const char* path, const char* unmount_when_done) {
         char* item = zips[chosen_item];
         int item_len = strlen(item);
         if (chosen_item == 0) {          // item 0 is always "../"
-            // go up but continue browsing (if the caller is update_directory)
+            // go up but continue browsing (if the caller is sdcard_directory)
             result = -1;
             break;
         } else if (item[item_len-1] == '/') {
@@ -620,7 +621,7 @@ update_directory(const char* path, const char* unmount_when_done) {
             strlcat(new_path, "/", PATH_MAX);
             strlcat(new_path, item, PATH_MAX);
             new_path[strlen(new_path)-1] = '\0';  // truncate the trailing '/'
-            result = update_directory(new_path, unmount_when_done);
+            result = sdcard_directory(new_path);
             if (result >= 0) break;
         } else {
             // selected a zip file:  attempt to install it, and return
@@ -633,9 +634,7 @@ update_directory(const char* path, const char* unmount_when_done) {
             ui_print("\n-- Install %s ...\n", path);
             set_sdcard_update_bootloader_message();
             char* copy = copy_sideloaded_package(new_path);
-            if (unmount_when_done != NULL) {
-                ensure_path_unmounted(unmount_when_done);
-            }
+            ensure_path_unmounted(SDCARD_ROOT);
             if (copy) {
                 result = install_package(copy);
                 free(copy);
@@ -651,9 +650,7 @@ update_directory(const char* path, const char* unmount_when_done) {
     free(zips);
     free(headers);
 
-    if (unmount_when_done != NULL) {
-        ensure_path_unmounted(unmount_when_done);
-    }
+    ensure_path_unmounted(SDCARD_ROOT);
     return result;
 }
 
@@ -856,7 +853,7 @@ main(int argc, char **argv) {
         }
     }
 
-    //LOGI("device_recovery_start()\n");
+    LOGI("device_recovery_start()\n");
     device_recovery_start();
 
     printf("Command:");
@@ -897,15 +894,37 @@ main(int argc, char **argv) {
             ui_print("Error: invalid Encrypted FS setting.\n");
             status = INSTALL_ERROR;
         }
-	}
-	
-    if (update_package != NULL) {
+
+        // Recovery strategy: if the data partition is damaged, disable encrypted file systems.
+        // This preventsthe device recycling endlessly in recovery mode.
+        if ((encrypted_fs_data.mode == MODE_ENCRYPTED_FS_ENABLED) &&
+                (read_encrypted_fs_info(&encrypted_fs_data))) {
+            ui_print("Encrypted FS change aborted, resetting to disabled state.\n");
+            encrypted_fs_data.mode = MODE_ENCRYPTED_FS_DISABLED;
+        }
+
+        if (status != INSTALL_ERROR) {
+            if (erase_volume("/data")) {
+                ui_print("Data wipe failed.\n");
+                status = INSTALL_ERROR;
+            } else if (erase_volume("/cache")) {
+                ui_print("Cache wipe failed.\n");
+                status = INSTALL_ERROR;
+            } else if ((encrypted_fs_data.mode == MODE_ENCRYPTED_FS_ENABLED) &&
+                      (restore_encrypted_fs_info(&encrypted_fs_data))) {
+                ui_print("Encrypted FS change aborted.\n");
+                status = INSTALL_ERROR;
+            } else {
+                ui_print("Successfully updated Encrypted FS.\n");
+                status = INSTALL_SUCCESS;
+            }
+        }
+    } else if (update_package != NULL) {
         status = install_package(update_package);
         if (status != INSTALL_SUCCESS) ui_print("Installation aborted.\n");
     } else if (wipe_data) {
         if (device_wipe_data()) status = INSTALL_ERROR;
         if (erase_volume("/data")) status = INSTALL_ERROR;
-        if (has_datadata() && erase_volume("/datadata")) status = INSTALL_ERROR;
         if (wipe_cache && erase_volume("/cache")) status = INSTALL_ERROR;
         if (status != INSTALL_SUCCESS) ui_print("Data wipe failed.\n");
     } else if (wipe_cache) {
@@ -936,10 +955,10 @@ main(int argc, char **argv) {
         }
     }
 
-    if (status != INSTALL_SUCCESS && !is_user_initiated_recovery)
-		ui_set_background(BACKGROUND_ICON_ERROR);
-    if (status != INSTALL_SUCCESS || ui_text_visible())
+    if (status != INSTALL_SUCCESS && !is_user_initiated_recovery) ui_set_background(BACKGROUND_ICON_ERROR);
+    if (status != INSTALL_SUCCESS || ui_text_visible()) {
         prompt_and_wait();
+    }
 
     // If there is a radio image pending, reboot now to install it.
     maybe_install_firmware_update(send_intent);
@@ -953,13 +972,16 @@ main(int argc, char **argv) {
     sync();
     //reboot((!poweroff) ? RB_AUTOBOOT : RB_POWER_OFF);
     // FOR ROM MANAGER compatibility
-    if(!poweroff) {
-		// reboot into system
-		__system("/sbin/reboot_system");
-	} else {
-		// shift to normal bootmode and power off
-		__system("/sbin/nbmode");
-		reboot(RB_POWER_OFF);
+    if(!poweroff)
+	{
+	// reboot into system
+	__system("/sbin/reboot_system");
+	}
+    else
+	{
+	// shift to normal bootmode and power off
+	__system("/sbin/nbmode");
+	reboot(RB_POWER_OFF);
 	}
     return EXIT_SUCCESS;
 }
