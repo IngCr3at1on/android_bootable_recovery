@@ -30,6 +30,12 @@ LOCAL_SRC_FILES := \
 	utilities.c \
     iniparse/ini.c
 
+ifeq ($(BUILD_WITH_AMEND),true)
+LOCAL_SRC_FILES += \
+	commands.c \
+	legacy.c
+endif	# BUILD_WITH_AMEND
+
 ADDITIONAL_RECOVERY_FILES := $(shell echo $$ADDITIONAL_RECOVERY_FILES)
 LOCAL_SRC_FILES += $(ADDITIONAL_RECOVERY_FILES)
 
@@ -78,6 +84,9 @@ LOCAL_STATIC_LIBRARIES += librebootrecovery
 LOCAL_STATIC_LIBRARIES += libext4_utils libz
 LOCAL_STATIC_LIBRARIES += libcannibal_e2fsck libcannibal_tune2fs libcannibal_mke2fs libcannibal_ext2fs libcannibal_ext2_blkid libcannibal_ext2_uuid libcannibal_ext2_profile libcannibal_ext2_com_err libcannibal_ext2_e2p
 LOCAL_STATIC_LIBRARIES += libminzip libunz libmincrypt
+ifeq ($(BUILD_WITH_AMEND),true)
+LOCAL_STATIC_LIBRARIES += libamend
+endif	# BUILD_WITH_AMEND
 
 LOCAL_STATIC_LIBRARIES += libedify libbusybox libclearsilverregex libmkyaffs2image libunyaffs liberase_image libdump_image libflash_image
 
@@ -95,6 +104,9 @@ LOCAL_C_INCLUDES += system/extras/ext4_utils
 include $(BUILD_EXECUTABLE)
 
 RECOVERY_LINKS := edify busybox e2fsck flash_image dump_image mkyaffs2image unyaffs erase_image mke2fs tune2fs nandroid reboot volume setprop
+ifeq ($(BUILD_WITH_AMEND),true)
+RECOVERY_LINKS += amend
+endif	# BUILD_WITH_AMEND
 
 # nc is provided by external/netcat
 RECOVERY_SYMLINKS := $(addprefix $(TARGET_RECOVERY_ROOT_OUT)/sbin/,$(RECOVERY_LINKS))
@@ -157,6 +169,9 @@ include $(BUILD_EXECUTABLE)
 
 include $(commands_recovery_local_path)/dedupe/Android.mk
 
+ifeq ($(BUILD_WITH_AMEND),true)
+include $(commands_recovery_local_path)/amend/Android.mk
+endif	# BUILD_WITH_AMEND
 include $(commands_recovery_local_path)/bmlutils/Android.mk
 include $(commands_recovery_local_path)/flashutils/Android.mk
 include $(commands_recovery_local_path)/libcrecovery/Android.mk

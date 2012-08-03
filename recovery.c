@@ -654,6 +654,25 @@ sdcard_directory(const char* path) {
     return result;
 }
 
+#ifdef BUILD_WITH_AMEND == TRUE
+	#define TEST_AMEND 0
+	#if TEST_AMEND
+	static void
+	test_amend()
+	{
+    	extern int test_symtab(void);
+    	extern int test_cmd_fn(void);
+    	int ret;
+    	LOGD("Testing symtab...\n");
+    	ret = test_symtab();
+    	LOGD("  returned %d\n", ret);
+    	LOGD("Testing cmd_fn...\n");
+    	ret = test_cmd_fn();
+    	LOGD("  returned %d\n", ret);
+	}
+	#endif  // TEST_AMEND
+#endif // BUILD_WITH_AMEND
+
 static void
 prompt_and_wait() {
     char** headers = prepend_title((const char**)MENU_HEADERS);
@@ -1119,6 +1138,11 @@ main(int argc, char **argv) {
     property_list(print_property, NULL);
     printf("\n");
 
+#ifdef BUILD_WITH_AMEND == TRUE
+	#if TEST_AMEND
+	test_amend();
+	#endif
+#endif // BUILD_WITH_AMEND
     int status = INSTALL_SUCCESS;
 
     if (toggle_secure_fs) {
