@@ -60,10 +60,13 @@
 #include "settingshandler.h"
 #include "settingshandler_lang.h"
 
+#define ABS_MT_POSITION_X 0x35  /* Center X ellipse position */
+
 int UICOLOR0 = 0;
 int UICOLOR1 = 0;
 int UICOLOR2 = 0;
 int UITHEME = 0;
+int easter = 0;
 
 int UI_COLOR_DEBUG = 0;
 
@@ -143,6 +146,9 @@ void show_recovery_debugging_menu()
 
 	static char* list[] = { "Fix Permissions",
 							"Report Error",
+#if TARGET_BOOTLOADER_BOARD_NAME != otter
+							"Key Test",
+#endif
 							"Show log",
 							"Toggle UI Debugging",
 							NULL
@@ -167,9 +173,11 @@ void show_recovery_debugging_menu()
 			case 1:
 				handle_failure(1);
 				break;
-/*	Leave this out for now, this version of the recovery doesn't have everything for it and keytest isn't needed on the kindle
 			case 2:
+#if TARGET_BOOTLOADER_BOARD_NAME != otter
 			{
+				ui_print("This doesn't work yet: I broke it with the import for now.\n");
+				/*
 				ui_print("Outputting key codes.\n");
 				ui_print("Go back to end debugging.\n");
 				struct keyStruct{
@@ -194,12 +202,17 @@ void show_recovery_debugging_menu()
 				}
 				while (action != GO_BACK);
 				break;
+				*/
 			}
-*/
-			case 2:
+			case 3:
+#endif
 				ui_printlogtail(12);
 				break;
+#if TARGET_BOOTLOADER_BOARD_NAME == otter
 			case 3:
+#else
+			case 4:
+#endif
 				toggle_ui_debugging();
 				break;
 		}
@@ -218,7 +231,7 @@ void show_settings_menu() {
     #define SETTINGS_ITEM_ORS_WIPE      3
     #define SETTINGS_ITEM_NAND_PROMPT   4
     #define SETTINGS_ITEM_SIGCHECK      5
-//    #define SETTINGS_ITEM_DEV_OPTIONS   6
+    #define SETTINGS_ITEM_DEV_OPTIONS   6
 
     static char* list[7];
 
@@ -327,13 +340,17 @@ void show_settings_menu() {
             }
             case SETTINGS_ITEM_SIGCHECK:
             {
+				easter++;
+				if (easter == EASTEREGG) {
+					UITHEME = EASTEREGG;
+					ui_dyn_background();
+					easter = 0;
+				}
 				if (signature_check_enabled == 1) {
-					//ui_print("Sigcheck: %i\n", signature_check_enabled);
 					ui_print("Disabling md5 signature check.\n");
 					list[5] = "Enable md5 signature check";
 					signature_check_enabled = 0;
 				} else {
-					//ui_print("Sigcheck: %i\n", signature_check_enabled);
 					ui_print("Enabling md5 signature check.\n");
 					list[5] = "Disable md5 signature check";
 					signature_check_enabled = 1;
@@ -387,6 +404,9 @@ void ui_dyn_background()
 			break;
 		case DOODERBUTT_BLUE_UI:
 			ui_set_background(BACKGROUND_ICON_DOODERBUTT);
+			break;
+		case EASTEREGG:
+			ui_set_background(BACKGROUND_ICON_EASTER);
 			break;
 		// Anything else is the clockwork icon
 		default:

@@ -266,6 +266,29 @@ try_update_binary(const char *path, ZipArchive *zip) {
     return INSTALL_SUCCESS;
 }
 
+static int
+handle_update_package(const char *path, ZipArchive *zip)
+{
+    // Update should take the rest of the progress bar.
+    ui_print("Installing update...\n");
+
+    LOGI("Trying update-binary.\n");
+    int result = try_update_binary(path, zip);
+#ifdef BUILD_WITH_AMEND == TRUE
+    if (result == INSTALL_UPDATE_BINARY_MISSING)
+    {
+        const ZipEntry *script_entry;
+        script_entry = find_update_script(zip);
+        LOGI("Trying update-script.\n");
+        result = handle_update_script(zip, script_entry);
+        if (result == INSTALL_UPDATE_SCRIPT_MISSING)
+            result = INSTALL_ERROR;
+    }
+#endif // BUILD_WITH_AMEND
+	mzCloseZipArchive(zip);
+    return result;
+}
+
 // Reads a file containing one or more public keys as produced by
 // DumpPublicKey:  this is an RSAPublicKey struct as it would appear
 // as a C source literal, eg:
@@ -368,14 +391,8 @@ int check_package_signature(const char *path) {
 static int
 really_install_package(const char *path, int dummy)
 {
-    ui_set_background(BACKGROUND_ICON_INSTALLING);
-    ui_print("Finding update package...\n");
     ui_show_indeterminate_progress();
     LOGI("Update location: %s\n", path);
-    if (ensure_path_mounted(path) != 0) {
-        LOGE("Can't mount %s\n", path);
-        return INSTALL_CORRUPT;
-    }
 
     ui_print("Opening update package...\n");
 
@@ -400,7 +417,7 @@ really_install_package(const char *path, int dummy)
     /* Verify and install the contents of the package.
      */
     ui_print("Installing update...\n");
-    return try_update_binary(path, &zip);
+    return handle_update_package(path, &zip);
 }
 
 int
@@ -420,5 +437,7 @@ install_package(const char* path, int dummy)
         fclose(install_log);
         chmod(LAST_INSTALL_FILE, 0644);
     }
+    ui_set_background(BACKGROUND_ICON_INSTALLING);
+    ui_print("Finding update package...\n");
     return result;
 }

@@ -42,7 +42,7 @@
 #include "flashutils/flashutils.h"
 
 #ifdef USE_EXT4
-#include "utilities/ext4_utils/make_ext4fs.h"
+#include "make_ext4fs.h"
 #endif
 
 // mount(fs_type, partition_type, location, mount_point)
@@ -454,7 +454,6 @@ Value* PackageExtractFileFn(const char* name, State* state,
     }
 }
 
-
 // retouch_binaries(lib1, lib2, ...)
 Value* RetouchBinariesFn(const char* name, State* state,
                          int argc, Expr* argv[]) {
@@ -825,7 +824,6 @@ Value* WriteRawImageFn(const char* name, State* state, int argc, Expr* argv[]) {
         ErrorAbort(state, "file argument to %s can't be empty", name);
         goto done;
     }
-
     char* filename = contents->data;
     if (0 == restore_raw_partition(NULL, partition, filename))
         result = strdup(partition);

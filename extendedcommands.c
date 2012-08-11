@@ -26,7 +26,7 @@
 #include "cutils/properties.h"
 #include "firmware.h"
 #include "install.h"
-#include "utilities/ext4_utils/make_ext4fs.h"
+#include "make_ext4fs.h"
 #include "minui/minui.h"
 #include "minzip/DirUtil.h"
 #include "roots.h"
@@ -488,8 +488,7 @@ void show_nandroid_restore_menu(const char* path)
 	headers[2] = NULL;
 
     char tmp[PATH_MAX];
-    sprintf(tmp, "%s/cotrecovery/backup/", path); // Need to fix up the default backup path to not point to sdcard so that we can use a variable here...
-    char* file = choose_file_menu(tmp, NULL, headers);
+    char* file = choose_file_menu(path, NULL, headers);
     if (file == NULL)
         return;
 
@@ -557,12 +556,32 @@ int confirm_selection(const char* title, const char* confirm)
 	confirm_headers[1] = wipedataheader2;
 	confirm_headers[2] = NULL;
 
+// This should probably be done for all landscape devices
+#if TARGET_BOOTLOADER_BOARD_NAME == otter
     static char* items[2];
 	items[0] = no;
 	items[1] = confirm;
+#else
+    static char* items[11];
+	items[0] = no;
+	items[1] = no;
+	items[2] = no;
+	items[3] = no;
+	items[4] = no;
+	items[5] = no;
+	items[6] = no;
+	items[7] = confirm;
+	items[8] = no;
+	items[9] = no;
+	items[10] = no;
+#endif
 
     int chosen_item = get_menu_selection(confirm_headers, items, 0, 0);
+#if TARGET_BOOTLOADER_BOARD_NAME == otter
     return chosen_item == 1;
+#else
+	return chosen_item == 7;
+#endif
 }
 
 int confirm_nandroid_backup(const char* title, const char* confirm)
@@ -571,12 +590,31 @@ int confirm_nandroid_backup(const char* title, const char* confirm)
 	confirm_headers[0] = recommended;
 	confirm_headers[1] = NULL;
 
+#if TARGET_BOOTLOADER_BOARD_NAME == otter
     static char* items[2];
 	items[0] = no;
 	items[1] = confirm;
+#else
+    static char* items[11];
+	items[0] = no;
+	items[1] = no;
+	items[2] = no;
+	items[3] = no;
+	items[4] = no;
+	items[5] = no;
+	items[6] = no;
+	items[7] = confirm;
+	items[8] = no;
+	items[9] = no;
+	items[10] = no;
+#endif
 
     int chosen_item = get_menu_selection(confirm_headers, items, 0, 0);
+#if TARGET_BOOTLOADER_BOARD_NAME == otter
     return chosen_item == 1;
+#else
+	return chosen_item == 7;
+#endif
 }
 
 void show_nandroid_advanced_restore_menu(const char* path)
@@ -595,9 +633,7 @@ void show_nandroid_advanced_restore_menu(const char* path)
 	advancedheaders[5] = "\n";
 	advancedheaders[6] = NULL;
 
-    char tmp[PATH_MAX];
-    sprintf(tmp, "%s/cotrecovery/backup/", path);
-    char* file = choose_file_menu(tmp, NULL, advancedheaders);
+    char* file = choose_file_menu(path, NULL, advancedheaders);
     if (file == NULL)
         return;
 
@@ -668,12 +704,18 @@ void show_nandroid_menu()
 				return;
 			}
 			case 1:
-				show_nandroid_restore_menu("/sdcard");
+			{
+				nandroid_get_backup_path(backup_path);
+				show_nandroid_restore_menu(backup_path);
 				return;
+			}
 			case 2:
-				show_nandroid_advanced_restore_menu("/sdcard");
+			{
+				nandroid_get_backup_path(backup_path);
+				show_nandroid_advanced_restore_menu(backup_path);
 				return;
-			case 3: 
+			}
+			case 3:
 			{
 				nandroid_get_backup_path(backup_path);
 				delete_old_backups(backup_path);
@@ -812,7 +854,7 @@ void handle_failure(int ret)
         return;
     mkdir("/sdcard/cotrecovery", S_IRWXU);
     __system("cp /tmp/recovery.log /sdcard/cotrecovery/recovery.log");
-    ui_print("This is the entirely wrong message and Drew is going to replace it with his inis eventually... in the meantime :P\n");
+    ui_print("A copy of the recovery log has been copied to /sdcard/cotrecovery/recovery.log. Please submit this file with your bug report.\n");
 }
 
 int is_path_mounted(const char* path) {

@@ -14,6 +14,13 @@
 
 LOCAL_PATH := $(call my-dir)
 
+ifeq ($(BUILD_WITH_AMEND),true)
+	LOCAL_MODULE_TAGS := optional
+	LOCAL_MODULE := make-update-script
+	LOCAL_SRC_FILES := make-update-script.c
+	include $(BUILD_HOST_EXECUTABLE)
+endif	# BUILD_WITH_AMEND
+
 ifneq ($(TARGET_SIMULATOR),true)
 
 include $(CLEAR_VARS)

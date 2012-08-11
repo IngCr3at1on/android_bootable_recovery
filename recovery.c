@@ -75,7 +75,9 @@ static const char *SDCARD_PACKAGE_FILE = "/sdcard/update.zip";
 static const char *TEMPORARY_LOG_FILE = "/tmp/recovery.log";
 static const char *SIDELOAD_TEMP_DIR = "/tmp/sideload";
 
-const char *DEFAULT_BACKUP_PATH = "/sdcard/cotrecovery/backup/";
+/* Leave directory separating forward slashes out of the default path
+ * they will be added when the path is determined in nandroid.c */
+const char *DEFAULT_BACKUP_PATH = "sdcard/cotrecovery/backup";
 const char *USER_DEFINED_BACKUP_MARKER = "/sdcard/cotrecovery/.userdefinedbackups";
 
 /*
@@ -426,10 +428,55 @@ copy_sideloaded_package(const char* original_path) {
   return strdup(copy_path);
 }
 
-char**
-prepend_title(char** headers) {
+int get_battery_level(void)
+{
+	static int lastVal = -1;
+	static time_t nextSecCheck = 0;
+
+	struct timeval curTime;
+	gettimeofday(&curTime, NULL);
+	if (curTime.tv_sec > nextSecCheck)
+	{
+		char cap_s[4];
+		FILE * cap = fopen("/sys/class/power_supply/battery/capacity","rt");
+		if (cap)
+		{
+			fgets(cap_s, 4, cap);
+			fclose(cap);
+			lastVal = atoi(cap_s);
+			if (lastVal > 100)  lastVal = 100;
+			if (lastVal < 0)    lastVal = 0;
+		}
+		nextSecCheck = curTime.tv_sec + 60;
+	}
+	return lastVal;
+}
+
+char* print_batt_cap() {
+	char* full_cap_s = (char*)malloc(30);
+	char full_cap_a[30];
+
+	int cap_i = get_battery_level();
+
+	// Get a usable time
+	struct tm *current;
+	time_t now;
+	now = time(0);
+	current = localtime(&now);
+
+	sprintf(full_cap_a, "Battery Level: %i%% @ %02D:%02D", cap_i, current->tm_hour, current->tm_min);
+	strcpy(full_cap_s, full_cap_a);
+
+	return full_cap_s;
+}
+
+char** prepend_title(char** headers) {
     char* title[] = { EXPAND(RECOVERY_VERSION),
                       "",
+#if TARGET_BOOTLOADER_BOARD_NAME != otter
+					  print_batt_cap(),
+					  "",
+#endif
                       NULL };
 
     // count the number of lines in our title, plus the
@@ -508,7 +555,11 @@ get_menu_selection(char** headers, char** items, int menu_only,
 
         if (abs(selected - old_selected) > 1) {
             wrap_count++;
+#if TARGET_BOOTLOADER_BOARD_NAME == otter
             if (wrap_count == 3) {
+#else		// This should really be defined for thunderc not if not otter
+			if (wrap_count == 300) {
+#endif
                 wrap_count = 0;
 #if TARGET_BOOTLOADER_BOARD_NAME != otter
                 if (ui_get_showing_back_button()) {
@@ -835,6 +886,7 @@ int run_script_file(void) {
 			}
 			if (strcmp(command, "install") == 0) {
 				// Install zip -- ToDo : Need to clean this shit up, it's redundant and I know it can be written better
+				ensure_path_mounted(SDCARD_ROOT);
 				ui_print("Installing zip file '%s'\n", value);
 				if (signature_check_enabled) {
 					i = check_package_signature(value);
@@ -1065,6 +1117,8 @@ main(int argc, char **argv) {
 		return busybox_driver(argc, argv);
 	}
     __system("/sbin/postrecoveryboot.sh");
+    __system("mkdir -p /storage");
+    __system("ln -s /sdcard /storage/sdcard0");
 
     int is_user_initiated_recovery = 0;
     time_t start = time(NULL);
@@ -1173,7 +1227,6 @@ main(int argc, char **argv) {
         status = INSTALL_ERROR;  // No command specified
         // we are starting up in user initiated recovery here
         // let's set up some default options
-        script_assert_enabled = 0;
         is_user_initiated_recovery = 1;
         ui_set_show_text(1);
         parse_settings();

@@ -1,8 +1,3 @@
-extern int script_assert_enabled;
-
-void
-toggle_script_asserts();
-
 void
 show_choose_zip_menu();
 
@@ -33,8 +28,6 @@ __system(const char *command);
 void
 show_advanced_menu();
 
-void
-wipe_battery_stats();
 
 void create_fstab();
 

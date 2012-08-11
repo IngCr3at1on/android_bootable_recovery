@@ -154,7 +154,6 @@ void create_default_settings(void) {
 
 void update_cot_settings(void) {
     FILE    *   ini ;
-	ui_print("Sigcheck: %i\n", signature_check_enabled);
 	ini = fopen_path(COTSETTINGS, "w");
 	fprintf(ini, ";\n; COT Settings INI\n;\n\n[Settings]\nTheme = %s ;\nORSReboot = %i ;\nORSWipePrompt = %i ;\nBackupPrompt = %i ;\nSignatureCheckEnabled = %i ;\nLanguage = %s ;\n\n", currenttheme, orsreboot, orswipeprompt, backupprompt, signature_check_enabled, language);
     fclose(ini);
@@ -202,7 +201,8 @@ void handle_theme(char * theme_name) {
     UICOLOR0 = themeconfig.uicolor0;
     UICOLOR1 = themeconfig.uicolor1;
     UICOLOR2 = themeconfig.uicolor2;
-    UITHEME = themeconfig.bgicon;
+	if (UITHEME != EASTEREGG)
+		UITHEME = themeconfig.bgicon;
 
     ui_dyn_background();
     ui_reset_icons();

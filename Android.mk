@@ -31,7 +31,7 @@ LOCAL_SRC_FILES := \
     iniparse/ini.c
 
 ifeq ($(BUILD_WITH_AMEND),true)
-LOCAL_SRC_FILES += \
+    LOCAL_SRC_FILES += \
 	commands.c \
 	legacy.c
 endif	# BUILD_WITH_AMEND
@@ -45,7 +45,7 @@ LOCAL_FORCE_STATIC_EXECUTABLE := true
 
 RECOVERY_NAME := Cannibal Open Touch
 
-RECOVERY_VERSION := $(RECOVERY_NAME) v1.9.99
+RECOVERY_VERSION := $(RECOVERY_NAME) v2.0.3-dev
 
 LOCAL_CFLAGS += -DRECOVERY_VERSION="$(RECOVERY_VERSION)"
 RECOVERY_API_VERSION := 2
@@ -61,9 +61,7 @@ $(foreach board_define,$(BOARD_RECOVERY_DEFINES), \
 
 LOCAL_STATIC_LIBRARIES :=
 LOCAL_CFLAGS += -DUSE_EXT4
-# Use a local copy of the ICS ext4_utils for use by the retouch binaries
-LOCAL_C_INCLUDES += bootable/recovery/utilities/ext4_utils
-#LOCAL_C_INCLUDES += system/extras/ext4_utils
+LOCAL_C_INCLUDES += system/extras/ext4_utils
 LOCAL_STATIC_LIBRARIES += libext4_utils libz
 
 # This binary is in the recovery ramdisk, which is otherwise a copy of root.
@@ -85,7 +83,7 @@ LOCAL_STATIC_LIBRARIES += libext4_utils libz
 LOCAL_STATIC_LIBRARIES += libcannibal_e2fsck libcannibal_tune2fs libcannibal_mke2fs libcannibal_ext2fs libcannibal_ext2_blkid libcannibal_ext2_uuid libcannibal_ext2_profile libcannibal_ext2_com_err libcannibal_ext2_e2p
 LOCAL_STATIC_LIBRARIES += libminzip libunz libmincrypt
 ifeq ($(BUILD_WITH_AMEND),true)
-LOCAL_STATIC_LIBRARIES += libamend
+	LOCAL_STATIC_LIBRARIES += libamend
 endif	# BUILD_WITH_AMEND
 
 LOCAL_STATIC_LIBRARIES += libedify libbusybox libclearsilverregex libmkyaffs2image libunyaffs liberase_image libdump_image libflash_image
@@ -105,7 +103,7 @@ include $(BUILD_EXECUTABLE)
 
 RECOVERY_LINKS := edify busybox e2fsck flash_image dump_image mkyaffs2image unyaffs erase_image mke2fs tune2fs nandroid reboot volume setprop
 ifeq ($(BUILD_WITH_AMEND),true)
-RECOVERY_LINKS += amend
+	RECOVERY_LINKS += amend
 endif	# BUILD_WITH_AMEND
 
 # nc is provided by external/netcat
