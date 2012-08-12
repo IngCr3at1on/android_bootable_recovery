@@ -1,6 +1,3 @@
-ifneq ($(TARGET_SIMULATOR),true)
-ifeq ($(TARGET_ARCH),arm)
-
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
@@ -165,12 +162,12 @@ LOCAL_STATIC_LIBRARIES := libmincrypt libcutils libstdc++ libc
 
 include $(BUILD_EXECUTABLE)
 
-include $(commands_recovery_local_path)/dedupe/Android.mk
 
 ifeq ($(BUILD_WITH_AMEND),true)
 include $(commands_recovery_local_path)/amend/Android.mk
 endif	# BUILD_WITH_AMEND
 include $(commands_recovery_local_path)/bmlutils/Android.mk
+include $(commands_recovery_local_path)/dedupe/Android.mk
 include $(commands_recovery_local_path)/flashutils/Android.mk
 include $(commands_recovery_local_path)/libcrecovery/Android.mk
 include $(commands_recovery_local_path)/minui/Android.mk
@@ -184,7 +181,3 @@ include $(commands_recovery_local_path)/updater/Android.mk
 include $(commands_recovery_local_path)/applypatch/Android.mk
 include $(commands_recovery_local_path)/utilities/Android.mk
 commands_recovery_local_path :=
-
-endif   # TARGET_ARCH == arm
-endif    # !TARGET_SIMULATOR
-

@@ -28,7 +28,6 @@ __system(const char *command);
 void
 show_advanced_menu();
 
-
 void create_fstab();
 
 int has_datadata();

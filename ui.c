@@ -17,24 +17,7 @@
 #include <linux/input.h>
 #include "recovery_ui.h"
 
-// Include extendedcommands.h in order to get our custom ui colors
-#include "extendedcommands.h"
-
 //these are included in the original kernel's linux/input.h but are missing from AOSP
-
-/* 
-//FOR KindleFire
-gr_fb_width() is 1024
-gr_fb_height() is 600
-*/
-/*	Disabled for testing the Optimus - need to rewrite shit to allow for either
-#define maxX 1024
-#define maxY 600
-
-#define MT_X(x) (x/4)		//Define max X axis range device recognises instead of 1024
-#define MT_Y(y) (y/4)		//Define max Y axis range device recognises instead of 1024
-*/
-
 #ifndef SYN_MT_REPORT
 #define SYN_MT_REPORT 2
 #define ABS_MT_TOUCH_MAJOR  0x30  /* Major axis of touching ellipse */
@@ -55,6 +38,7 @@ gr_fb_height() is 600
 #include <unistd.h>
 
 #include "common.h"
+#include "extendedcommands.h"
 #include "minui/minui.h"
 #include "recovery_ui.h"
 #include "settings.h"
@@ -581,22 +565,21 @@ static void *progress_thread(void *cookie)
 // handle the action associated with user input touch events inside the ui handler
 int device_handle_mouse(struct keyStruct *key, int visible)
 {
+// ToDo: Following structures should be global
 #ifdef BUILD_IN_LANDSCAPE
-struct { int xL; int xR; } MENU_ICON[] = {
-	{  3*gr_fb_height()/4, 4*gr_fb_height()/4 },
-	{  2*gr_fb_height()/4, 3*gr_fb_height()/4 },
-	{  1*gr_fb_height()/4, 2*gr_fb_height()/4 },
-	{  0*gr_fb_height()/4, 1*gr_fb_height()/4 },
-};
+	struct { int xL; int xR; } MENU_ICON[] = {
+		{  3*gr_fb_height()/4, 4*gr_fb_height()/4 },
+		{  2*gr_fb_height()/4, 3*gr_fb_height()/4 },
+		{  1*gr_fb_height()/4, 2*gr_fb_height()/4 },
+		{  0*gr_fb_height()/4, 1*gr_fb_height()/4 },
 #else
-//ToDo: Following structure should be global
 	struct { int x; int y; int xL; int xR; } MENU_ICON[] = {
 		{  get_menu_icon_info(MENU_BACK,MENU_ICON_X),	get_menu_icon_info(MENU_BACK,MENU_ICON_Y), get_menu_icon_info(MENU_BACK,MENU_ICON_XL), get_menu_icon_info(MENU_BACK,MENU_ICON_XR) },
 		{  get_menu_icon_info(MENU_DOWN,MENU_ICON_X),	get_menu_icon_info(MENU_DOWN,MENU_ICON_Y), get_menu_icon_info(MENU_DOWN,MENU_ICON_XL), get_menu_icon_info(MENU_DOWN,MENU_ICON_XR) },
 		{  get_menu_icon_info(MENU_UP,MENU_ICON_X),	get_menu_icon_info(MENU_UP,MENU_ICON_Y), get_menu_icon_info(MENU_UP,MENU_ICON_XL), get_menu_icon_info(MENU_UP,MENU_ICON_XR) },
 		{  get_menu_icon_info(MENU_SELECT,MENU_ICON_X),	get_menu_icon_info(MENU_SELECT,MENU_ICON_Y), get_menu_icon_info(MENU_SELECT,MENU_ICON_XL), get_menu_icon_info(MENU_SELECT,MENU_ICON_XR) },
-	};
 #endif
+	};
 
 	if (visible) {	
 		int position;
@@ -616,7 +599,7 @@ struct { int xL; int xR; } MENU_ICON[] = {
 			ui_print("HIGHLIGHT_UP\n");
 		else if(position > MENU_ICON[MENU_SELECT].xL && position < MENU_ICON[MENU_SELECT].xR)
 			ui_print("SELECT_ITEM\n");
-		*/
+		*/ // End DEBUG code
 		if(position > MENU_ICON[MENU_BACK].xL && position < MENU_ICON[MENU_BACK].xR)
 			return GO_BACK;
 		else if(position > MENU_ICON[MENU_DOWN].xL && position < MENU_ICON[MENU_DOWN].xR)
@@ -633,6 +616,7 @@ struct { int xL; int xR; } MENU_ICON[] = {
 static void ui_handle_mouse_input(int* curPos)
 {
 	pthread_mutex_lock(&key_queue_mutex);
+// ToDo: Following structure should be global
 #ifdef BUILD_IN_LANDSCAPE
 	//In this case MENU_SELECT icon has maximum possible height.
 	int menu_max_height = gr_get_height(gMenuIcon[MENU_SELECT]);
@@ -642,7 +626,6 @@ static void ui_handle_mouse_input(int* curPos)
 		{  gr_fb_width() - menu_max_height,	3*gr_fb_height()/8, 1*gr_fb_height()/4, 2*gr_fb_height()/4  },
 		{  gr_fb_width() - menu_max_height,	1*gr_fb_height()/8, 0*gr_fb_height()/4, 1*gr_fb_height()/4  },
 #else
-//ToDo: Following structure should be global
 	struct { int x; int y; int xL; int xR; } MENU_ICON[] = {
 		{  get_menu_icon_info(MENU_BACK,MENU_ICON_X),	get_menu_icon_info(MENU_BACK,MENU_ICON_Y), get_menu_icon_info(MENU_BACK,MENU_ICON_XL), get_menu_icon_info(MENU_BACK,MENU_ICON_XR) },
 		{  get_menu_icon_info(MENU_DOWN,MENU_ICON_X),	get_menu_icon_info(MENU_DOWN,MENU_ICON_Y), get_menu_icon_info(MENU_DOWN,MENU_ICON_XL), get_menu_icon_info(MENU_DOWN,MENU_ICON_XR) },

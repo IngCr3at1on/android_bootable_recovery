@@ -34,7 +34,8 @@
 #include "verifier.h"
 
 #include "firmware.h"
-#ifdef BUILD_WITH_AMEND == TRUE
+
+#ifdef BUILD_WITH_AMEND
 	#include "legacy.h"
 #endif
 
@@ -115,7 +116,7 @@ try_update_binary(const char *path, ZipArchive *zip) {
     const ZipEntry* binary_entry =
             mzFindZipEntry(zip, ASSUMED_UPDATE_BINARY_NAME);
     if (binary_entry == NULL) {
-#ifndef BUILD_WITH_AMEND == TRUE
+#ifndef BUILD_WITH_AMEND
         const ZipEntry* update_script_entry =
                 mzFindZipEntry(zip, ASSUMED_UPDATE_SCRIPT_NAME);
         if (update_script_entry != NULL) {
@@ -274,7 +275,7 @@ handle_update_package(const char *path, ZipArchive *zip)
 
     LOGI("Trying update-binary.\n");
     int result = try_update_binary(path, zip);
-#ifdef BUILD_WITH_AMEND == TRUE
+#ifdef BUILD_WITH_AMEND
     if (result == INSTALL_UPDATE_BINARY_MISSING)
     {
         const ZipEntry *script_entry;

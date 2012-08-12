@@ -19,6 +19,9 @@
 
 #include <stdio.h>
 
+// Un-comment to enable landscape builds
+//#define BUILD_IN_LANDSCAPE true
+
 extern const char *DEFAULT_BACKUP_PATH;
 extern const char *USER_DEFINED_BACKUP_MARKER;
 extern char** prepend_title(char** headers);
@@ -165,5 +168,8 @@ typedef struct {
 
     const char* fs_options2;
 } Volume;
+
+// fopen a file, mounting volumes and making parent dirs as necessary.
+FILE* fopen_path(const char *path, const char *mode);
 
 #endif  // RECOVERY_COMMON_H

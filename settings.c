@@ -177,7 +177,6 @@ void show_recovery_debugging_menu()
 #if TARGET_BOOTLOADER_BOARD_NAME != otter
 			{
 				ui_print("This doesn't work yet: I broke it with the import for now.\n");
-				/*
 				ui_print("Outputting key codes.\n");
 				ui_print("Go back to end debugging.\n");
 				struct keyStruct{
@@ -202,7 +201,6 @@ void show_recovery_debugging_menu()
 				}
 				while (action != GO_BACK);
 				break;
-				*/
 			}
 			case 3:
 #endif

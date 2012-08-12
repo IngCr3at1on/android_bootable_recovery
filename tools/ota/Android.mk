@@ -21,8 +21,6 @@ ifeq ($(BUILD_WITH_AMEND),true)
 	include $(BUILD_HOST_EXECUTABLE)
 endif	# BUILD_WITH_AMEND
 
-ifneq ($(TARGET_SIMULATOR),true)
-
 include $(CLEAR_VARS)
 LOCAL_FORCE_STATIC_EXECUTABLE := true
 LOCAL_MODULE := add-property-tag
@@ -40,5 +38,3 @@ LOCAL_MODULE_TAGS := debug
 LOCAL_SRC_FILES := check-lost+found.c
 LOCAL_STATIC_LIBRARIES := libcutils libc
 include $(BUILD_EXECUTABLE)
-
-endif  # !TARGET_SIMULATOR
