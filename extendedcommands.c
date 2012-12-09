@@ -829,7 +829,7 @@ int confirm_nandroid_backup(const char* title, const char* confirm)
     return chosen_item == 7;
 }
 
-void show_nandroid_advanced_backup_menu() {
+void show_nandroid_advanced_backup_menu(int flag) {
 	static char* advancedheaders[] = { "Choose the partitions to backup.",
 					NULL
     };
@@ -894,8 +894,8 @@ void show_nandroid_advanced_backup_menu() {
 	}
 	
 	char backup_path[PATH_MAX];
-	nandroid_generate_timestamp_path(backup_path, 0);
-	return nandroid_advanced_backup(backup_path, backup_list[0], backup_list[1], backup_list[2], backup_list[3], backup_list[4], backup_list[5]);
+	nandroid_generate_timestamp_path(backup_path, 0, flag);
+	return nandroid_advanced_backup(backup_path, backup_list[0], backup_list[1], backup_list[2], backup_list[3], backup_list[4], backup_list[5], flag);
 }
 
 void show_nandroid_advanced_restore_menu(const char* path)
@@ -1013,6 +1013,7 @@ void show_nandroid_menu()
 
     for (;;) {
         int chosen_item = get_filtered_menu_selection(headers, list, 0, 0, sizeof(list) / sizeof(char*));
+        int flag = 0;
         if (chosen_item == GO_BACK)
             break;
         switch (chosen_item)
@@ -1020,14 +1021,20 @@ void show_nandroid_menu()
 			char backup_path[PATH_MAX];
             case 0:
                 {
-					nandroid_generate_timestamp_path(backup_path, 0);
-                    nandroid_backup(backup_path);
+#ifdef RECOVERY_DEVICE_USES_ALTBOOT
+					flag = altboot_choose_backup_table();
+#endif
+					nandroid_generate_timestamp_path(backup_path, 0, flag);
+                    nandroid_backup(backup_path, flag);
 					break;
                 }
             case 1:
 				{
-					nandroid_get_backup_path(backup_path, 0);
-                	show_nandroid_restore_menu(backup_path);
+#ifdef RECOVERY_DEVICE_USES_ALTBOOT
+					flag = altboot_choose_restore_table();
+#endif
+					nandroid_get_backup_path(backup_path, 0, flag);
+                	show_nandroid_restore_menu(backup_path, flag);
                 	break;
 				}
             case 2:
@@ -1037,14 +1044,20 @@ void show_nandroid_menu()
                 	break;
 				}
 			case 3:
-				{
-					show_nandroid_advanced_backup_menu();
+				{			
+#ifdef RECOVERY_DEVICE_USES_ALTBOOT
+					flag = altboot_choose_backup_table();
+#endif
+					show_nandroid_advanced_backup_menu(flag);
 					break;
 				}
             case 4:
 				{
-					nandroid_get_backup_path(backup_path, 0);
-                	show_nandroid_advanced_restore_menu(backup_path);
+#ifdef RECOVERY_DEVICE_USES_ALTBOOT
+					flag = altboot_choose_restore_table();
+#endif
+					nandroid_get_backup_path(backup_path, 0, flag);
+                	show_nandroid_advanced_restore_menu(backup_path, flag);
                 	break;
 				}
             case 5:
@@ -1052,20 +1065,29 @@ void show_nandroid_menu()
                 break;
             case 6:
                 {
-					nandroid_generate_timestamp_path(backup_path, 1);
-                    nandroid_backup(backup_path);
+#ifdef RECOVERY_DEVICE_USES_ALTBOOT
+					flag = altboot_choose_backup_table();
+#endif
+					nandroid_generate_timestamp_path(backup_path, 1, flag);
+                    nandroid_backup(backup_path, flag);
 					break;
                 }
             case 7:
                 if (other_sd != NULL) {
-					nandroid_get_backup_path(backup_path, 1);
-                    show_nandroid_restore_menu(backup_path);
+#ifdef RECOVERY_DEVICE_USES_ALTBOOT
+					flag = altboot_choose_restore_table();
+#endif
+					nandroid_get_backup_path(backup_path, 1, flag);
+                    show_nandroid_restore_menu(backup_path, flag);
                 }
                 break;
             case 8:
                 if (other_sd != NULL) {
-					nandroid_get_backup_path(backup_path, 1);
-                    show_nandroid_advanced_restore_menu(backup_path);
+#ifdef RECOVERY_DEVICE_USES_ALTBOOT
+					flag = altboot_choose_restore_table();
+#endif
+					nandroid_get_backup_path(backup_path, 1, flag);
+                    show_nandroid_advanced_restore_menu(backup_path, flag);
                 }
                 break;
             case 9:
